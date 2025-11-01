@@ -1,4 +1,4 @@
-name: Build, Test, Deploy to GKE
+name: Build, Test, Deploy to Azure VM
 
 on:
   push:
@@ -6,10 +6,8 @@ on:
       - main
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT }}
-  REGION: ${{ secrets.GCP_REGION }}
-  CLUSTER_NAME: ${{ secrets.GKE_CLUSTER }}
-  REPO_NAME: microservices-repo
+  AZURE_VM_HOST: ${{ secrets.AZURE_VM_HOST }}
+  AZURE_VM_USERNAME: ${{ secrets.AZURE_VM_USERNAME }}
 
 jobs:
   build-test-deploy:
@@ -34,59 +32,73 @@ jobs:
       - name: Run tests
         run: dotnet test dotnet_microservices.sln --configuration Release --verbosity normal
 
-      # 5. Authenticate to Google Cloud
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      # 6. Set up gcloud CLI
-      - name: Set up gcloud CLI
-        uses: google-github-actions/setup-gcloud@v2
-
-      # 7. Authenticate Docker with Artifact Registry
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
-
-      # 8. Build and push Docker images
-      - name: Build and Push Docker Images
+      # 5. Setup SSH key
+      - name: Setup SSH key
         run: |
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }} ./Frontend
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/authservice:${{ github.sha }} ./AuthService
-          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/catalogservice:${{ github.sha }} ./CatalogService
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AZURE_VM_SSH_KEY }}" > ~/.ssh/azure_key
+          chmod 600 ~/.ssh/azure_key
+          ssh-keyscan -H ${{ env.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
 
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/authservice:${{ github.sha }}
-          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/catalogservice:${{ github.sha }}
-
-      # 9. Connect to GKE
-      - name: Get GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ env.CLUSTER_NAME }}
-          location: ${{ env.REGION }}
-
-      # 10. Deploy to GKE
-      - name: Deploy to GKE
+      # 6. Copy files to Azure VM
+      - name: Copy files to VM
         run: |
-          # Create namespace if it doesn't exist
-          kubectl apply -f k8s/namespace.yaml
+          # Create deployment directory on VM
+          ssh -i ~/.ssh/azure_key ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }} "mkdir -p ~/app"
           
-          # Apply all Kubernetes manifests
-          kubectl apply -f k8s/authservice-deployment.yaml
-          kubectl apply -f k8s/catalogservice-deployment.yaml
-          kubectl apply -f k8s/frontend-deployment.yaml
-          kubectl apply -f k8s/ingress.yaml
-          
-          # Update the deployment images to the new version
-          kubectl set image deployment/frontend frontend=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/frontend:${{ github.sha }} -n microservices
-          kubectl set image deployment/authservice authservice=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/authservice:${{ github.sha }} -n microservices
-          kubectl set image deployment/catalogservice catalogservice=${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/catalogservice:${{ github.sha }} -n microservices
-          
-          # Wait for rollout to complete
-          kubectl rollout status deployment/frontend -n microservices
-          kubectl rollout status deployment/authservice -n microservices
-          kubectl rollout status deployment/catalogservice -n microservices
-          
-          # Display deployment status
-          kubectl get pods -n microservices
+          # Copy all project files
+          scp -i ~/.ssh/azure_key -r \
+            docker-compose.yml \
+            AuthService \
+            CatalogService \
+            Frontend \
+            ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }}:~/app/
+
+      # 7. Deploy on Azure VM
+      - name: Deploy Application
+        run: |
+          ssh -i ~/.ssh/azure_key ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }} << 'EOF'
+            cd ~/app
+            
+            # Stop existing containers
+            docker compose down || true
+            
+            # Remove old images to save space
+            docker image prune -af || true
+            
+            # Build and start services
+            docker compose up -d --build
+            
+            # Wait for services to be healthy
+            echo "Waiting for services to start..."
+            sleep 30
+            
+            # Check container status
+            docker compose ps
+            
+            # Check if frontend is accessible
+            curl -f http://localhost:80 || echo "Warning: Frontend not responding yet"
+          EOF
+
+      # 8. Verify Deployment
+      - name: Verify Deployment
+        run: |
+          ssh -i ~/.ssh/azure_key ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }} << 'EOF'
+            echo "=== Container Status ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+            
+            echo -e "\n=== Service Health Check ==="
+            docker compose ps
+            
+            echo -e "\n=== Disk Usage ==="
+            df -h /
+            
+            echo -e "\n=== Recent Logs ==="
+            docker compose logs --tail=50
+          EOF
+
+      # 9. Cleanup SSH key
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f ~/.ssh/azure_key

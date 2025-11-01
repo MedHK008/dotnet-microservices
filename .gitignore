@@ -43,3 +43,14 @@ artifacts/
 *.log
 *.cache
 .DS_Store
+
+# Environment variables and secrets
+.env
+*.pem
+*.key
+.ssh/
+
+# Azure and deployment
+azure-credentials.json
+
+*.md

@@ -1,0 +1,108 @@
+# Production Docker Compose configuration
+# Uses environment variables for sensitive data
+
+services:
+  # Auth Database
+  authdb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: authdb
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${AUTH_DB_PASSWORD:-YourStrong@Passw0rd}
+    ports:
+      - "1435:1433"
+    networks:
+      - microservices-network
+    volumes:
+      - authdb-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${AUTH_DB_PASSWORD:-YourStrong@Passw0rd}" -C -Q 'SELECT 1' || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # Catalog Database
+  catalogdb:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: catalogdb
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${CATALOG_DB_PASSWORD:-YourStrong@Passw0rd}
+    ports:
+      - "1436:1433"
+    networks:
+      - microservices-network
+    volumes:
+      - catalogdb-data:/var/opt/mssql
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "${CATALOG_DB_PASSWORD:-YourStrong@Passw0rd}" -C -Q 'SELECT 1' || exit 1
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # Auth Service
+  authservice:
+    build:
+      context: ./AuthService
+      dockerfile: Dockerfile
+    container_name: authservice
+    ports:
+      - "5001:80"
+    depends_on:
+      authdb:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    restart: unless-stopped
+
+  # Catalog Service
+  catalogservice:
+    build:
+      context: ./CatalogService
+      dockerfile: Dockerfile
+    container_name: catalogservice
+    ports:
+      - "5002:80"
+    depends_on:
+      catalogdb:
+        condition: service_healthy
+    networks:
+      - microservices-network
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - authservice
+      - catalogservice
+    networks:
+      - microservices-network
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:80
+    restart: unless-stopped
+
+networks:
+  microservices-network:
+    driver: bridge
+
+# Persistent volumes for database data
+volumes:
+  authdb-data:
+  catalogdb-data:
