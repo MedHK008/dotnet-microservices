@@ -84,6 +84,8 @@ jobs:
       - name: Verify Deployment
         run: |
           ssh -i ~/.ssh/azure_key ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }} << 'EOF'
+            cd ~/app
+            
             echo "=== Container Status ==="
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
             
