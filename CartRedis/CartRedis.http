@@ -1,0 +1,6 @@
+@CartRedis_HostAddress = http://localhost:5112
+
+GET {{CartRedis_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

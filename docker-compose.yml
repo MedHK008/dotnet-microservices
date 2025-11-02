@@ -90,6 +90,15 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
 
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-network
+    restart: unless-stopped
+
 networks:
   microservices-network:
     driver: bridge
