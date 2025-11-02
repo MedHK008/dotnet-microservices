@@ -1,127 +1,187 @@
+using System.Linq;
+using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using Frontend.Models;
 
 namespace Frontend.Services;
 
-// Service to manage shopping cart stored in cookies
 public class CartService
 {
+    private readonly HttpClient _httpClient;
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private const string CartCookieName = "ShoppingCart";
-
-    public CartService(IHttpContextAccessor httpContextAccessor)
+    private readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web)
     {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public CartService(HttpClient httpClient, IConfiguration configuration, IHttpContextAccessor httpContextAccessor)
+    {
+        _httpClient = httpClient;
         _httpContextAccessor = httpContextAccessor;
-    }
 
-    // Get cart items from cookie
-    public List<CartItem> GetCartItems()
-    {
-        var context = _httpContextAccessor.HttpContext;
-        if (context == null) return new List<CartItem>();
-
-        var cartCookie = context.Request.Cookies[CartCookieName];
-        if (string.IsNullOrEmpty(cartCookie))
+        var baseAddress = configuration["Services:CartService"];
+        if (string.IsNullOrWhiteSpace(baseAddress))
         {
-            return new List<CartItem>();
+            throw new InvalidOperationException("Cart service base address is not configured.");
         }
 
-        try
-        {
-            return JsonSerializer.Deserialize<List<CartItem>>(cartCookie) ?? new List<CartItem>();
-        }
-        catch
-        {
-            return new List<CartItem>();
-        }
+        _httpClient.BaseAddress = new Uri(baseAddress);
     }
 
-    // Add item to cart
-    public void AddToCart(Product product, int quantity = 1)
+    public async Task<CartState> GetCartAsync(CancellationToken cancellationToken = default)
     {
-        var cart = GetCartItems();
-        // Check if item already exists in cart
-        var existingItem = cart.FirstOrDefault(i => i.ProductId == product.Id);
-        //  update quantity if so
-        if (existingItem != null)
+        var userId = GetUserIdentifier();
+        if (userId is null)
         {
-            existingItem.Quantity += quantity;
-        }
-        else
-        {
-            cart.Add(new CartItem
-            {
-                ProductId = product.Id,
-                ProductName = product.Name,
-                Price = product.Price,
-                Quantity = quantity
-            });
+            return CartState.Empty;
         }
 
-        SaveCart(cart);
-    }
-
-    // Remove item from cart
-    public void RemoveFromCart(int productId)
-    {
-        var cart = GetCartItems();
-        cart.RemoveAll(i => i.ProductId == productId);
-        SaveCart(cart);
-    }
-
-    // Update item quantity
-    public void UpdateQuantity(int productId, int quantity)
-    {
-        var cart = GetCartItems();
-        var item = cart.FirstOrDefault(i => i.ProductId == productId);
-
-        if (item != null)
+        var response = await _httpClient.GetAsync($"/api/cart/{Uri.EscapeDataString(userId)}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
         {
-            if (quantity <= 0)
-            {
-                cart.Remove(item);
-            }
-            else
-            {
-                item.Quantity = quantity;
-            }
+            return CartState.Empty;
         }
 
-        SaveCart(cart);
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CartResponse>(_serializerOptions, cancellationToken);
+        return payload?.ToState() ?? CartState.Empty;
     }
 
-    // Clear entire cart
-    public void ClearCart()
+    public async Task<CartState> AddToCartAsync(Product product, int quantity = 1, CancellationToken cancellationToken = default)
     {
-        // we should delete the cookie
-        var context = _httpContextAccessor.HttpContext;
-        if (context == null) return;
-
-        context.Response.Cookies.Delete(CartCookieName);
-        // SaveCart(new List<CartItem>());
-    }
-
-    // Get total cart value
-    public decimal GetCartTotal()
-    {
-        return GetCartItems().Sum(i => i.Price * i.Quantity);
-    }
-
-    // Save cart to cookie
-    private void SaveCart(List<CartItem> cart)
-    {
-        var context = _httpContextAccessor.HttpContext;
-        if (context == null) return;
-
-        var json = JsonSerializer.Serialize(cart);
-        var cookieOptions = new CookieOptions
+        ArgumentNullException.ThrowIfNull(product);
+        if (quantity <= 0)
         {
-            Expires = DateTime.Now.AddDays(7),
-            HttpOnly = true,
-            Secure = false,
-            SameSite = SameSiteMode.Lax
+            throw new ArgumentOutOfRangeException(nameof(quantity), "Quantity must be greater than zero.");
+        }
+
+        var userId = EnsureUserIdentifier();
+        var request = new CartItemRequest
+        {
+            ProductId = product.Id,
+            ProductName = product.Name,
+            Price = product.Price,
+            Quantity = quantity
         };
 
-        context.Response.Cookies.Append(CartCookieName, json, cookieOptions);
+        var response = await _httpClient.PostAsJsonAsync($"/api/cart/{Uri.EscapeDataString(userId)}/items", request, _serializerOptions, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CartResponse>(_serializerOptions, cancellationToken);
+        return payload?.ToState() ?? CartState.Empty;
+    }
+
+    public async Task<CartState> RemoveFromCartAsync(int productId, CancellationToken cancellationToken = default)
+    {
+        var userId = EnsureUserIdentifier();
+        var response = await _httpClient.DeleteAsync($"/api/cart/{Uri.EscapeDataString(userId)}/items/{productId}", cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return CartState.Empty;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CartResponse>(_serializerOptions, cancellationToken);
+        return payload?.ToState() ?? CartState.Empty;
+    }
+
+    public async Task<CartState> UpdateQuantityAsync(int productId, int quantity, CancellationToken cancellationToken = default)
+    {
+        var userId = EnsureUserIdentifier();
+        var updateRequest = new UpdateCartItemRequest { Quantity = quantity };
+        var response = await _httpClient.PutAsJsonAsync($"/api/cart/{Uri.EscapeDataString(userId)}/items/{productId}", updateRequest, _serializerOptions, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return CartState.Empty;
+        }
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CartResponse>(_serializerOptions, cancellationToken);
+        return payload?.ToState() ?? CartState.Empty;
+    }
+
+    public async Task ClearCartAsync(CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserIdentifier();
+        if (userId is null)
+        {
+            return;
+        }
+
+        var response = await _httpClient.DeleteAsync($"/api/cart/{Uri.EscapeDataString(userId)}", cancellationToken);
+        if (response.IsSuccessStatusCode || response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return;
+        }
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    private string? GetUserIdentifier()
+    {
+        var email = _httpContextAccessor.HttpContext?.Request.Cookies["UserEmail"];
+        return string.IsNullOrWhiteSpace(email) ? null : email.Trim();
+    }
+
+    private string EnsureUserIdentifier()
+    {
+        var userId = GetUserIdentifier();
+        if (userId is null)
+        {
+            throw new InvalidOperationException("User identifier is not available.");
+        }
+
+        return userId;
+    }
+
+    private sealed class CartItemRequest
+    {
+        public int ProductId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
+        public decimal Price { get; set; }
+        public int Quantity { get; set; }
+    }
+
+    private sealed class UpdateCartItemRequest
+    {
+        public int Quantity { get; set; }
+    }
+
+    private sealed class CartResponse
+    {
+        public List<CartItem> Items { get; set; } = new();
+        public decimal TotalPrice { get; set; }
+        public int TotalQuantity { get; set; }
+
+        public CartState ToState()
+        {
+            var items = Items.Select(item => new CartItem
+            {
+                ProductId = item.ProductId,
+                ProductName = item.ProductName,
+                Price = item.Price,
+                Quantity = item.Quantity
+            }).ToList();
+
+            return new CartState(items, TotalPrice, TotalQuantity);
+        }
+    }
+
+    public sealed class CartState
+    {
+        public static CartState Empty => new(new List<CartItem>(), 0m, 0);
+
+        public CartState(List<CartItem> items, decimal total, int totalQuantity)
+        {
+            Items = items;
+            Total = total;
+            TotalQuantity = totalQuantity;
+        }
+
+        public List<CartItem> Items { get; }
+        public decimal Total { get; }
+        public int TotalQuantity { get; }
     }
 }

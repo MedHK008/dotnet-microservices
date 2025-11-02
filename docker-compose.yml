@@ -85,10 +85,29 @@ services:
     depends_on:
       - authservice
       - catalogservice
+      - cartredis
     networks:
       - microservices-network
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - Services__AuthService=http://authservice
+      - Services__CatalogService=http://catalogservice
+      - Services__CartService=http://cartredis
+
+  cartredis:
+    build:
+      context: ./CartRedis
+      dockerfile: Dockerfile
+    container_name: cartredis
+    ports:
+      - "5003:80"
+    depends_on:
+      - redis
+    networks:
+      - microservices-network
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__Redis=redis:6379
 
   redis:
     image: redis:latest
