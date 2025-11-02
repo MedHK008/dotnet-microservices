@@ -77,7 +77,7 @@ jobs:
             docker compose ps
             
             # Check if frontend is accessible
-            curl -f http://localhost:80 || echo "Warning: Frontend not responding yet"
+            curl -f http://localhost:5000 || echo "Warning: Frontend not responding yet"
           EOF
 
       # 8. Verify Deployment
