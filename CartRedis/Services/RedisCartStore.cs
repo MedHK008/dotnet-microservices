@@ -48,7 +48,8 @@ public class RedisCartStore : ICartStore
                 ProductId = request.ProductId,
                 ProductName = request.ProductName,
                 Price = request.Price,
-                Quantity = request.Quantity
+                Quantity = request.Quantity,
+                ImageUrl = request.ImageUrl
             });
         }
         else
@@ -56,9 +57,10 @@ public class RedisCartStore : ICartStore
             item.Quantity += request.Quantity;
             item.Price = request.Price;
             item.ProductName = request.ProductName;
+            item.ImageUrl = request.ImageUrl;
         }
 
-    await PersistAsync(userId, cart, cancellationToken).ConfigureAwait(false);
+        await PersistAsync(userId, cart, cancellationToken).ConfigureAwait(false);
         return cart;
     }
 

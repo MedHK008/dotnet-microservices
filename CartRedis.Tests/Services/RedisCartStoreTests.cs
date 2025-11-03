@@ -53,7 +53,8 @@ public class RedisCartStoreTests
             ProductId = 1,
             ProductName = "Item",
             Quantity = 2,
-            Price = 9.99m
+            Price = 9.99m,
+            ImageUrl = "https://example.com/item.jpg"
         };
 
         var result = await _sut.AddOrIncrementItemAsync("user@example.com", request);
@@ -81,7 +82,8 @@ public class RedisCartStoreTests
                     ProductId = 1,
                     ProductName = "Item",
                     Quantity = 3,
-                    Price = 5m
+                    Price = 5m,
+                    ImageUrl = "https://example.com/item.jpg"
                 }
             }
         };
@@ -110,8 +112,8 @@ public class RedisCartStoreTests
         {
             Items =
             {
-                new CartItem { ProductId = 1, ProductName = "One", Quantity = 1, Price = 5 },
-                new CartItem { ProductId = 2, ProductName = "Two", Quantity = 1, Price = 10 }
+                new CartItem { ProductId = 1, ProductName = "One", Quantity = 1, Price = 5, ImageUrl = "https://example.com/one.jpg" },
+                new CartItem { ProductId = 2, ProductName = "Two", Quantity = 1, Price = 10, ImageUrl = "https://example.com/two.jpg" }
             }
         };
 
@@ -140,5 +142,45 @@ public class RedisCartStoreTests
         await _sut.ClearCartAsync("user@example.com");
 
         _databaseMock.Verify();
+    }
+
+    [Fact]
+    public async Task AddOrIncrementItemAsync_UpdatesImageUrl_WhenProductExists()
+    {
+        var existing = new CartDocument
+        {
+            Items =
+            {
+                new CartItem
+                {
+                    ProductId = 1,
+                    ProductName = "Item",
+                    Quantity = 2,
+                    Price = 9.99m,
+                    ImageUrl = "https://example.com/old-image.jpg"
+                }
+            }
+        };
+
+        _databaseMock.Setup(db => db.StringGetAsync(It.IsAny<RedisKey>(), It.IsAny<CommandFlags>()))
+            .ReturnsAsync(JsonSerializer.Serialize(existing, _jsonOptions));
+
+        var request = new CartItemRequest
+        {
+            ProductId = 1,
+            ProductName = "Item Updated",
+            Quantity = 3,
+            Price = 12.99m,
+            ImageUrl = "https://example.com/new-image.jpg"
+        };
+
+        var result = await _sut.AddOrIncrementItemAsync("user@example.com", request);
+
+        Assert.Single(result.Items);
+        var item = result.Items.First();
+        Assert.Equal(5, item.Quantity); // 2 + 3
+        Assert.Equal(12.99m, item.Price);
+        Assert.Equal("Item Updated", item.ProductName);
+        Assert.Equal("https://example.com/new-image.jpg", item.ImageUrl);
     }
 }

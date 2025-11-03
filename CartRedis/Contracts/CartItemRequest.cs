@@ -16,4 +16,7 @@ public class CartItemRequest
 
     [Range(1, int.MaxValue)]
     public int Quantity { get; set; }
+
+    [StringLength(500)]
+    public string ImageUrl { get; set; } = string.Empty;
 }

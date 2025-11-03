@@ -25,7 +25,20 @@ foreach (var endpoint in serviceEndpoints)
 
 builder.Services.AddHttpClient();
 
+// Add CORS to allow frontend to call this gateway
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
 var app = builder.Build();
+
+app.UseCors("AllowAll");
 
 var whiteListedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 {
