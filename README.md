@@ -9,3 +9,5 @@
 - [CatalogService.Tests](CatalogService.Tests/readme.md)
 
 website : https://www.lhawta.store/
+
+The goal of this project is to work with a microservice architecture, create a build test deploy pipeline and connect the system with one or more frontends.
