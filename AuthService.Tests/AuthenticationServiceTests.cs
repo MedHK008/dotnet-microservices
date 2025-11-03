@@ -375,6 +375,43 @@ public class AuthenticationServiceTests
         Assert.False(isValid);
     }
 
+    [Fact]
+    public async Task LogoutAsync_WithValidToken_ShouldRevokeToken()
+    {
+        // Arrange
+        var context = CreateContext();
+        var service = new AuthenticationService(context, _mockConfiguration.Object);
+        var registerRequest = new RegisterRequest
+        {
+            Email = "logout@example.com",
+            Password = "password123"
+        };
+
+        var authResponse = await service.RegisterAsync(registerRequest);
+
+        // Act
+        var logoutResult = await service.LogoutAsync(authResponse!.Token);
+        var validateAfterLogout = await service.ValidateTokenAsync(authResponse.Token);
+
+        // Assert
+        Assert.True(logoutResult);
+        Assert.False(validateAfterLogout);
+    }
+
+    [Fact]
+    public async Task LogoutAsync_WithUnknownToken_ShouldReturnFalse()
+    {
+        // Arrange
+        var context = CreateContext();
+        var service = new AuthenticationService(context, _mockConfiguration.Object);
+
+        // Act
+        var result = await service.LogoutAsync("does-not-exist");
+
+        // Assert
+        Assert.False(result);
+    }
+
     #endregion
 
     #region Edge Cases

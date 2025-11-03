@@ -59,4 +59,11 @@ app.MapPost("/api/auth/validate", async ([FromBody] TokenValidationRequest reque
     return isValid ? Results.Ok(new { valid = true }) : Results.Unauthorized();
 });
 
+// Logout endpoint - revokes token by removing it from the database
+app.MapPost("/api/auth/logout", async ([FromBody] LogoutRequest request, AuthenticationService authService) =>
+{
+    var loggedOut = await authService.LogoutAsync(request.Token);
+    return loggedOut ? Results.Ok(new { loggedOut = true }) : Results.NotFound("Token not found");
+});
+
 app.Run();

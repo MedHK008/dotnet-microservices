@@ -28,6 +28,12 @@ Content-Type: application/json
   "token": "<jwt-token>"
 }
 
+POST {{{{BACKEND_URL}}}}/api/auth/logout
+Content-Type: application/json
+{
+  "token": "<jwt-token>"
+}
+
 ### Catalog Service - Get All Products
 # Retrieves the complete catalog as an array of Product objects.
 GET {{{{BACKEND_URL}}}}/api/products

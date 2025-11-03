@@ -31,7 +31,8 @@ var whiteListedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
 {
     "/api/auth/login",
     "/api/auth/register",
-    "/api/auth/validate"
+    "/api/auth/validate",
+    "/api/auth/logout"
 };
 
 var routeMappings = new List<RouteMapping>

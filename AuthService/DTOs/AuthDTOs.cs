@@ -26,3 +26,9 @@ public class TokenValidationRequest
 {
     public string Token { get; set; } = string.Empty;
 }
+
+// Request model for logging out a user and revoking their token
+public class LogoutRequest
+{
+    public string Token { get; set; } = string.Empty;
+}
