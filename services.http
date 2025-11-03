@@ -1,0 +1,82 @@
+@authService = http://localhost:5001
+@catalogService = http://localhost:5002
+@cartService = http://localhost:5003
+
+### Auth Service - Register
+# Creates a new user account and returns an AuthResponse { token, email } on success.
+POST {{authService}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "new.user@example.com",
+  "password": "Str0ngPass!"
+}
+
+### Auth Service - Login
+# Authenticates an existing user and returns an AuthResponse { token, email }.
+POST {{authService}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "new.user@example.com",
+  "password": "Str0ngPass!"
+}
+
+### Auth Service - Validate Token
+# Validates a JWT token and responds with { valid: true } when accepted.
+POST {{authService}}/api/auth/validate
+Content-Type: application/json
+
+{
+  "token": "<jwt-token>"
+}
+
+### Catalog Service - Get All Products
+# Retrieves the complete catalog as an array of Product objects.
+GET {{catalogService}}/api/products
+Accept: application/json
+
+### Catalog Service - Get Product By Id
+# Retrieves a single Product by numeric identifier. Returns 404 if missing.
+GET {{catalogService}}/api/products/1
+Accept: application/json
+
+### Cart Service - Get Cart
+# Fetches the current cart for the provided user identifier.
+GET {{cartService}}/api/cart/user-123
+Accept: application/json
+
+### Cart Service - Add Or Increment Cart Item
+# Adds a new item or increments quantity for an existing product in the cart.
+POST {{cartService}}/api/cart/user-123/items
+Content-Type: application/json
+
+{
+  "productId": 101,
+  "productName": "Sample Product",
+  "price": 29.99,
+  "quantity": 1
+}
+
+### Cart Service - Update Cart Item Quantity
+# Overwrites the quantity for a specific product in the cart.
+PUT {{cartService}}/api/cart/user-123/items/101
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### Cart Service - Remove Cart Item
+# Removes a single product from the cart. Returns the updated cart or 404.
+DELETE {{cartService}}/api/cart/user-123/items/101
+Accept: application/json
+
+### Cart Service - Clear Cart
+# Deletes the entire cart for the provided user identifier.
+DELETE {{cartService}}/api/cart/user-123
+
+### Cart Service - Health Check
+# Lightweight readiness probe.
+GET {{cartService}}/health
+Accept: application/json
