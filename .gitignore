@@ -53,6 +53,5 @@ artifacts/
 # Azure and deployment
 azure-credentials.json
 
-*.md
 *.txt
 *.conf
