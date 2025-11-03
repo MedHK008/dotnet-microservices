@@ -94,11 +94,11 @@ services:
       - Services__CatalogService=http://catalogservice
       - Services__CartService=http://cartredis
 
-  gateway:
+  gatewayservice:
     build:
-      context: ./Gateway
+      context: ./GatewayService
       dockerfile: Dockerfile
-    container_name: gateway
+    container_name: gatewayservice
     ports:
       - "8081:80"
     depends_on:

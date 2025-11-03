@@ -53,7 +53,7 @@ jobs:
             CatalogService \
             CartRedis \
             Frontend \
-            gateway \
+            GatewayService \
             ${{ env.AZURE_VM_USERNAME }}@${{ env.AZURE_VM_HOST }}:~/app/
 
       # 7. Deploy on Azure VM
