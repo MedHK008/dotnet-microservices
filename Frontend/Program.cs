@@ -11,9 +11,7 @@ builder.Services.AddHttpContextAccessor();
 // Register HTTP clients for microservices
 builder.Services.AddHttpClient<AuthService>();
 builder.Services.AddHttpClient<CatalogService>();
-
-// Register cart service
-builder.Services.AddScoped<CartService>();
+builder.Services.AddHttpClient<CartService>();
 
 // Add session support, needed for cart management
 builder.Services.AddSession(options =>

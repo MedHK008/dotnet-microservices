@@ -1,0 +1,92 @@
+@BACKEND_URL = http://localhost:8081
+
+### Auth Service - Register
+# Creates a new user account and returns an AuthResponse { token, email } on success.
+POST {{{{BACKEND_URL}}}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "new.user@example.com",
+  "password": "Str0ngPass!"
+}
+
+### Auth Service - Login
+# Authenticates an existing user and returns an AuthResponse { token, email }.
+POST {{{{BACKEND_URL}}}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "new.user@example.com",
+  "password": "Str0ngPass!"
+}
+
+### Auth Service - Validate Token
+# Validates a JWT token and responds with { valid: true } when accepted.
+POST {{{{BACKEND_URL}}}}/api/auth/validate
+Content-Type: application/json
+{
+  "token": "<jwt-token>"
+}
+
+POST {{{{BACKEND_URL}}}}/api/auth/logout
+Content-Type: application/json
+{
+  "token": "<jwt-token>"
+}
+
+### Catalog Service - Get All Products
+# Retrieves the complete catalog as an array of Product objects.
+GET {{{{BACKEND_URL}}}}/api/products
+header: Authorization : Bearer <jwt-token>
+Accept: application/json
+
+### Catalog Service - Get Product By Id
+# Retrieves a single Product by numeric identifier. Returns 404 if missing.
+GET {{{{BACKEND_URL}}}}/api/products/1
+header: Authorization : Bearer <jwt-token>
+Accept: application/json
+
+### Cart Service - Get Cart
+# Fetches the current cart for the provided user identifier.
+GET {{{{BACKEND_URL}}}}/api/cart/user-123
+header: Authorization : Bearer <jwt-token>
+Accept: application/json
+
+### Cart Service - Add Or Increment Cart Item
+# Adds a new item or increments quantity for an existing product in the cart.
+POST {{{{BACKEND_URL}}}}/api/cart/user-123/items
+header: Authorization : Bearer <jwt-token>
+Content-Type: application/json
+
+{
+  "productId": 101,
+  "productName": "Sample Product",
+  "price": 29.99,
+  "quantity": 1
+}
+
+### Cart Service - Update Cart Item Quantity
+# Overwrites the quantity for a specific product in the cart.
+PUT {{{{BACKEND_URL}}}}/api/cart/user-123/items/101
+header: Authorization : Bearer <jwt-token>
+Content-Type: application/json
+
+{
+  "quantity": 2
+}
+
+### Cart Service - Remove Cart Item
+# Removes a single product from the cart. Returns the updated cart or 404.
+DELETE {{{{BACKEND_URL}}}}/api/cart/user-123/items/101
+header: Authorization : Bearer <jwt-token>
+Accept: application/json
+
+### Cart Service - Clear Cart
+# Deletes the entire cart for the provided user identifier.
+DELETE {{{{BACKEND_URL}}}}/api/cart/user-123
+header: Authorization : Bearer <jwt-token>
+
+### Cart Service - Health Check
+GET {{{{BACKEND_URL}}}}/health
+header: Authorization : Bearer <jwt-token>
+Accept: application/json

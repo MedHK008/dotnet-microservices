@@ -54,3 +54,4 @@ artifacts/
 azure-credentials.json
 
 *.md
+*.txt

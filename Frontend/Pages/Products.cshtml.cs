@@ -46,7 +46,8 @@ public class ProductsModel : PageModel
         Products = await _catalogService.GetProductsAsync();
 
         // Get cart count
-        CartItemCount = _cartService.GetCartItems().Sum(i => i.Quantity);
+        var cartState = await _cartService.GetCartAsync();
+        CartItemCount = cartState.TotalQuantity;
 
         return Page();
     }
@@ -57,17 +58,17 @@ public class ProductsModel : PageModel
         var product = await _catalogService.GetProductByIdAsync(productId);
         if (product != null)
         {
-            _cartService.AddToCart(product);
+            await _cartService.AddToCartAsync(product);
         }
 
         return RedirectToPage();
     }
 
-    public IActionResult OnPostLogout()
+    public async Task<IActionResult> OnPostLogoutAsync()
     {
         Response.Cookies.Delete("AuthToken");
         Response.Cookies.Delete("UserEmail");
-        _cartService.ClearCart();
+        await _cartService.ClearCartAsync();
         return RedirectToPage("/Login");
     }
 }

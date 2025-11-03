@@ -1,0 +1,33 @@
+@CartRedis_HostAddress = http://localhost:5112
+
+GET {{CartRedis_HostAddress}}/api/cart/test@example.com
+Accept: application/json
+
+###
+
+POST {{CartRedis_HostAddress}}/api/cart/test@example.com/items
+Content-Type: application/json
+
+{
+	"productId": 1,
+	"productName": "Sample",
+	"price": 19.99,
+	"quantity": 2
+}
+
+###
+
+PUT {{CartRedis_HostAddress}}/api/cart/test@example.com/items/1
+Content-Type: application/json
+
+{
+	"quantity": 5
+}
+
+###
+
+DELETE {{CartRedis_HostAddress}}/api/cart/test@example.com/items/1
+
+###
+
+DELETE {{CartRedis_HostAddress}}/api/cart/test@example.com

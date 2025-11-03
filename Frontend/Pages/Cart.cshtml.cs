@@ -35,17 +35,18 @@ public class CartModel : PageModel
             // Token is invalid - clear cookies and redirect to login
             Response.Cookies.Delete("AuthToken");
             Response.Cookies.Delete("UserEmail");
-            _cartService.ClearCart();
+            await _cartService.ClearCartAsync();
             return RedirectToPage("/Login");
         }
 
-        CartItems = _cartService.GetCartItems();
-        Total = _cartService.GetCartTotal();
+        var cartState = await _cartService.GetCartAsync();
+        CartItems = cartState.Items;
+        Total = cartState.Total;
 
         return Page();
     }
 
-    public IActionResult OnPostRemove(int productId)
+    public async Task<IActionResult> OnPostRemoveAsync(int productId)
     {
         // Verify user is authenticated before allowing cart modifications
         if (string.IsNullOrEmpty(Request.Cookies["AuthToken"]))
@@ -53,11 +54,11 @@ public class CartModel : PageModel
             return RedirectToPage("/Login");
         }
 
-        _cartService.RemoveFromCart(productId);
+        await _cartService.RemoveFromCartAsync(productId);
         return RedirectToPage();
     }
 
-    public IActionResult OnPostUpdateQuantity(int productId, int quantity)
+    public async Task<IActionResult> OnPostUpdateQuantityAsync(int productId, int quantity)
     {
         // Verify user is authenticated before allowing cart modifications
         if (string.IsNullOrEmpty(Request.Cookies["AuthToken"]))
@@ -65,11 +66,11 @@ public class CartModel : PageModel
             return RedirectToPage("/Login");
         }
 
-        _cartService.UpdateQuantity(productId, quantity);
+        await _cartService.UpdateQuantityAsync(productId, quantity);
         return RedirectToPage();
     }
 
-    public IActionResult OnPostClear()
+    public async Task<IActionResult> OnPostClearAsync()
     {
         // Verify user is authenticated before allowing cart modifications
         if (string.IsNullOrEmpty(Request.Cookies["AuthToken"]))
@@ -77,7 +78,7 @@ public class CartModel : PageModel
             return RedirectToPage("/Login");
         }
 
-        _cartService.ClearCart();
+        await _cartService.ClearCartAsync();
         return RedirectToPage();
     }
 }

@@ -1,7 +1,9 @@
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Linq;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using AuthService.Data;
@@ -42,8 +44,8 @@ public class AuthenticationService
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        // Generate JWT token
-        var token = GenerateJwtToken(user);
+        // Issue and persist JWT token
+        var token = await IssueTokenAsync(user);
 
         return new AuthResponse
         {
@@ -62,8 +64,8 @@ public class AuthenticationService
             return null;
         }
 
-        // Generate JWT token
-        var token = GenerateJwtToken(user);
+        // Issue and persist JWT token
+        var token = await IssueTokenAsync(user);
 
         return new AuthResponse
         {
@@ -75,6 +77,16 @@ public class AuthenticationService
     // Validate JWT token
     public async Task<bool> ValidateTokenAsync(string token)
     {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        if (!await _context.UserTokens.AsNoTracking().AnyAsync(t => t.Token == token))
+        {
+            return false;
+        }
+
         try
         {
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -100,6 +112,26 @@ public class AuthenticationService
         }
     }
 
+    // Logout user by removing token from the database
+    public async Task<bool> LogoutAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var storedToken = await _context.UserTokens.FirstOrDefaultAsync(t => t.Token == token);
+
+        if (storedToken == null)
+        {
+            return false;
+        }
+
+        _context.UserTokens.Remove(storedToken);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
     // Generate JWT token for authenticated user
     private string GenerateJwtToken(User user)
     {
@@ -122,6 +154,25 @@ public class AuthenticationService
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    private async Task<string> IssueTokenAsync(User user)
+    {
+        var token = GenerateJwtToken(user);
+
+        var existingTokens = _context.UserTokens.Where(t => t.UserId == user.Id);
+        _context.UserTokens.RemoveRange(existingTokens);
+
+        _context.UserTokens.Add(new UserToken
+        {
+            UserId = user.Id,
+            Token = token,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return token;
     }
 
     // Hash password using SHA256
