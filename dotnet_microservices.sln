@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CatalogService.Tests", "Cat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CartRedis", "CartRedis\CartRedis.csproj", "{0BB71FF6-039C-417C-82E1-ABAAC93394E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CartRedis.Tests", "CartRedis.Tests\CartRedis.Tests.csproj", "{AA4E482C-E4C3-4073-AC66-B968180C86DB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -97,6 +99,18 @@ Global
 		{0BB71FF6-039C-417C-82E1-ABAAC93394E8}.Release|x64.Build.0 = Release|Any CPU
 		{0BB71FF6-039C-417C-82E1-ABAAC93394E8}.Release|x86.ActiveCfg = Release|Any CPU
 		{0BB71FF6-039C-417C-82E1-ABAAC93394E8}.Release|x86.Build.0 = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|x64.Build.0 = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Debug|x86.Build.0 = Debug|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|x64.ActiveCfg = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|x64.Build.0 = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|x86.ActiveCfg = Release|Any CPU
+		{AA4E482C-E4C3-4073-AC66-B968180C86DB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
