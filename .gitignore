@@ -55,3 +55,4 @@ azure-credentials.json
 
 *.md
 *.txt
+*.conf
