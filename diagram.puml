@@ -1,0 +1,60 @@
+@startuml
+title Deployment Diagram - Microservices on Azure VM with Docker and Vercel Frontend
+
+skinparam node {
+  BackgroundColor White
+  BorderColor Black
+  FontColor Black
+}
+skinparam cloud {
+  BackgroundColor LightBlue
+}
+skinparam database {
+  BackgroundColor Beige
+}
+skinparam rectangle {
+  BorderColor Black
+}
+
+actor User as user
+
+cloud "Vercel" as vercel {
+  node "Next.js Frontend" as frontend
+}
+
+node "Azure VM" as azure {
+  node "Nginx + Certbot" as nginx {
+    rectangle "Reverse Proxy\n(HTTP → HTTPS)\nSSL via Certbot" as reverse
+  }
+
+  node "Docker Host" as docker {
+    folder "microservices-network (bridge)" {
+      node "GatewayService\n(port 8081:80)" as gateway
+
+      node "AuthService\n(port 5001:80)" as authsvc
+      database "AuthDB\n(MSSQL)\n(port 1435:1433)" as authdb
+
+      node "CatalogService\n(port 5002:80)" as catalogsvc
+      database "CatalogDB\n(MSSQL)\n(port 1436:1433)" as catalogdb
+
+      node "CartRedis\n(port 5003:80)" as cartsvc
+      node "Redis\n(port 6379:6379)" as redis
+    }
+  }
+}
+
+' External connections
+user --> frontend : HTTPS Requests
+frontend --> nginx : HTTPS API Calls (/api/*)
+nginx --> gateway : HTTP (internal Docker routing)
+
+' Internal service communications
+gateway --> authsvc : REST API Calls
+gateway --> catalogsvc : REST API Calls
+gateway --> cartsvc : REST API Calls
+
+authsvc --> authdb : SQL Queries (TCP 1433)
+catalogsvc --> catalogdb : SQL Queries (TCP 1433)
+cartsvc --> redis : Redis Protocol (TCP 6379)
+
+@enduml
